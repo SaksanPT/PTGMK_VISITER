@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin — ผู้มาติดต่อ/ผู้รับเหมา คลังแม่กลอง</title>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    body { font-family: 'Prompt', sans-serif; background: #F4FBF6; color: #263238; min-height: 100vh; padding: 24px 14px 48px; }
+    .wrap { max-width: 680px; margin: 0 auto; }
+    h1 { font-size: 20px; font-weight: 600; color: #2E7D32; }
+    .admin-name { font-size: 12px; color: #78909C; margin-top: 2px; }
+    .tabs { display: flex; gap: 8px; margin: 16px 0; }
+    .tab { border: none; border-radius: 50px; padding: 8px 20px; font-family: inherit; font-size: 15px; font-weight: 600; background: #E0EEE4; color: #558B60; cursor: pointer; }
+    .tab.active { background: #4CAF50; color: #fff; }
+
+    .count-card { background: #fff; border-radius: 20px; padding: 24px; box-shadow: 0 4px 14px rgba(46,125,50,.10); margin-bottom: 18px; text-align: center; }
+    .count { font-size: 56px; font-weight: 600; color: #2E7D32; line-height: 1.1; }
+    .count-label { font-size: 14px; color: #607D8B; }
+    .sub-count { font-size: 13px; color: #90A4AE; margin-top: 4px; }
+
+    .section-label { font-size: 13px; font-weight: 600; color: #78909C; margin: 16px 4px 8px; }
+    ul { list-style: none; }
+    li { background: #fff; border-radius: 14px; padding: 14px 16px; margin-bottom: 10px; display: flex; gap: 12px; align-items: flex-start; box-shadow: 0 2px 6px rgba(0,0,0,.05); }
+    li.done { opacity: .8; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
+    .dot.on { background: #4CAF50; animation: pulse 1.4s infinite; box-shadow: 0 0 6px rgba(76,175,80,.7); }
+    .dot.off { background: #E53935; }
+    @keyframes pulse { 50% { opacity: .25; } }
+    .info { flex: 1; min-width: 0; }
+    .name { font-weight: 600; font-size: 16px; }
+    .vtype { font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 8px; margin-left: 6px; }
+    .vtype.v { background: #C8E6C9; color: #2E7D32; }
+    .vtype.c { background: #FFE0B2; color: #E65100; }
+    .meta { font-size: 13px; color: #607D8B; margin-top: 2px; line-height: 1.5; }
+    .meta a { color: #2E7D32; text-decoration: none; }
+    .badge { font-size: 11px; font-weight: 600; color: #E65100; background: #FFE0B2; border-radius: 8px; padding: 1px 8px; }
+    .dur { font-size: 13px; font-weight: 600; color: #2E7D32; white-space: nowrap; text-align: right; }
+    li.done .dur { color: #78909C; font-weight: 400; }
+
+    .empty, .panel { text-align: center; color: #607D8B; padding: 28px 20px; font-size: 15px; background: #fff; border-radius: 14px; }
+    .panel h2 { font-size: 17px; color: #D32F2F; margin-bottom: 8px; font-weight: 600; }
+    .uid { display: inline-block; margin-top: 10px; padding: 8px 12px; background: #ECEFF1; border-radius: 8px; font-family: monospace; font-size: 13px; word-break: break-all; user-select: all; }
+
+    .form { background: #fff; border-radius: 14px; padding: 20px; box-shadow: 0 2px 6px rgba(0,0,0,.05); }
+    .field { margin-bottom: 14px; }
+    .field label { display: block; font-size: 13px; color: #546E7A; margin-bottom: 4px; }
+    .field input { width: 100%; font-family: inherit; font-size: 16px; padding: 10px 12px; border: 1px solid #C8E6C9; border-radius: 10px; }
+    .row2 { display: flex; gap: 12px; } .row2 .field { flex: 1; }
+    .btn { border: none; border-radius: 50px; padding: 12px 26px; font-family: inherit; font-size: 16px; font-weight: 600; color: #fff; background: #4CAF50; cursor: pointer; }
+    .btn.ghost { background: #fff; color: #2E7D32; border: 1px solid #A5D6A7; }
+    .btn:disabled { opacity: .6; }
+    .savemsg { margin-top: 10px; font-size: 13px; color: #2E7D32; min-height: 18px; }
+    .note { font-size: 12px; color: #90A4AE; margin-top: 12px; line-height: 1.6; }
+    footer { margin-top: 16px; font-size: 12px; color: #90A4AE; text-align: center; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>ผู้มาติดต่อ / ผู้รับเหมา — อยู่ในคลังตอนนี้</h1>
+    <div class="admin-name" id="adminName"></div>
+
+    <div id="loadingPanel" class="panel" style="margin-top:16px">กำลังตรวจสอบสิทธิ์...</div>
+
+    <div id="deniedPanel" class="panel hidden" style="margin-top:16px">
+      <h2>บัญชีนี้ไม่มีสิทธิ์เข้าถึง</h2>
+      ส่งรหัสด้านล่างให้ผู้ดูแลระบบเพื่อเพิ่มเป็นแอดมิน
+      <div class="uid" id="myUid"></div>
+    </div>
+
+    <div id="main" class="hidden">
+      <div class="tabs">
+        <button class="tab active" id="tabLive" onclick="showTab('live')">คนในคลัง</button>
+        <button class="tab" id="tabSettings" onclick="showTab('settings')">ตั้งค่า</button>
+      </div>
+
+      <div id="secLive">
+        <div class="count-card">
+          <div class="count" id="count">–</div>
+          <div class="count-label">คนที่อยู่ในคลังตอนนี้</div>
+          <div class="sub-count" id="subCount"></div>
+        </div>
+        <div class="section-label hidden" id="lblIn">🟢 อยู่ในคลัง</div>
+        <ul id="listIn"></ul>
+        <div class="section-label hidden" id="lblOut">🔴 ออกไปแล้ววันนี้</div>
+        <ul id="listOut"></ul>
+        <footer id="updated"></footer>
+      </div>
+
+      <div id="secSettings" class="hidden">
+        <div class="form">
+          <div class="row2">
+            <div class="field"><label>ละติจูดจุดเช็คอิน (lat)</label><input type="text" id="fLat" inputmode="decimal"></div>
+            <div class="field"><label>ลองจิจูด (lng)</label><input type="text" id="fLng" inputmode="decimal"></div>
+          </div>
+          <div class="field" style="margin-top:-4px">
+            <button class="btn ghost" onclick="useHere()" style="font-size:14px;padding:8px 18px">📍 ใช้ตำแหน่งที่ฉันยืนอยู่ตอนนี้</button>
+          </div>
+          <div class="field"><label>รัศมีที่อนุญาต (เมตร) — 0 = ไม่ตรวจระยะ</label><input type="number" id="fRadius" min="0"></div>
+          <div class="row2">
+            <div class="field"><label>เวลาเข้างาน (เติมให้คนลืมเช็คอิน)</label><input type="time" id="fStart"></div>
+            <div class="field"><label>เวลาเลิกงาน (เติมให้คนลืมเช็คเอาท์)</label><input type="time" id="fEnd"></div>
+          </div>
+          <button class="btn" id="btnSave" onclick="saveSettings()">บันทึกการตั้งค่า</button>
+          <div class="savemsg" id="saveMsg"></div>
+          <div class="note">ค่านี้เป็นของระบบผู้มาติดต่อ/ผู้รับเหมาโดยเฉพาะ แยกจากระบบพนักงาน<br>หาพิกัด: Google Maps > คลิกขวาที่ตัวคลัง > ตัวเลขบรรทัดแรกคือ lat, lng</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js" charset="utf-8"></script>
+  <script>
+    // ===================== ตั้งค่า =====================
+    const LIFF_ID  = 'XXXXXXXXXX-XXXXXXXX'; // 🔧 LIFF สำหรับหน้า admin ผู้มาติดต่อ
+    const FUNC_URL = 'https://YOUR-VISITOR-PROJECT-REF.supabase.co/functions/v1/visitor_dashboard'; // 🔧
+    const REFRESH_SECONDS = 20;
+    // ===================================================
+
+    const $ = (id) => document.getElementById(id);
+    let rows = [], timer = null;
+    const fmtT = (iso) => new Date(iso).toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit' });
+    const fmtDT = (iso) => new Date(iso).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' });
+    const esc = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+    function durText(a, b) { const m = Math.floor(((b?new Date(b):new Date())-new Date(a))/60000); const h=Math.floor(m/60), mm=m%60; return h>0?`${h} ชม. ${mm} น.`:`${mm} นาที`; }
+
+    async function api(payload) {
+      const res = await fetch(FUNC_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accessToken: liff.getAccessToken(), ...payload }) });
+      const raw = await res.text();
+      try { return JSON.parse(raw); } catch { throw new Error('เซิร์ฟเวอร์ตอบผิดรูปแบบ (HTTP '+res.status+'): '+raw.slice(0,120)); }
+    }
+
+    function showTab(t) {
+      $('tabLive').classList.toggle('active', t==='live');
+      $('tabSettings').classList.toggle('active', t==='settings');
+      $('secLive').classList.toggle('hidden', t!=='live');
+      $('secSettings').classList.toggle('hidden', t!=='settings');
+    }
+
+    async function start() {
+      try {
+        await liff.init({ liffId: LIFF_ID });
+        if (!liff.isLoggedIn()) { liff.login({ redirectUri: location.href }); return; }
+        const ok = await load();
+        if (ok) { loadSettings(); timer = setInterval(load, REFRESH_SECONDS*1000); setInterval(render, 60000);
+          document.addEventListener('visibilitychange', () => { if (document.visibilityState==='visible') load(); }); }
+      } catch (err) { $('loadingPanel').textContent = 'เริ่มระบบไม่สำเร็จ: ' + err.message; }
+    }
+
+    async function load() {
+      try {
+        const data = await api({ action: 'live' });
+        if (!data.ok) {
+          if (timer) clearInterval(timer);
+          $('loadingPanel').classList.add('hidden'); $('main').classList.add('hidden');
+          if (data.code === 'not_admin') { $('myUid').textContent = data.userId; $('deniedPanel').classList.remove('hidden'); }
+          else { $('loadingPanel').classList.remove('hidden'); $('loadingPanel').textContent = data.desc || 'เกิดข้อผิดพลาด'; }
+          return false;
+        }
+        rows = data.rows || [];
+        $('adminName').textContent = data.adminName ? 'ล็อกอินโดย ' + data.adminName : '';
+        $('loadingPanel').classList.add('hidden'); $('deniedPanel').classList.add('hidden'); $('main').classList.remove('hidden');
+        render();
+        return true;
+      } catch (err) { $('updated').textContent = err.message; return false; }
+    }
+
+    function personLi(r, inside) {
+      const v = r.visitors || {};
+      const name = v.full_name || r.line_user_id;
+      const isC = r.visitor_type === 'contractor';
+      const li = document.createElement('li');
+      li.className = inside ? '' : 'done';
+      const contact = [
+        v.phone ? `📞 <a href="tel:${esc(v.phone)}">${esc(v.phone)}</a>` : '',
+        v.company ? `🏢 ${esc(v.company)}` : '',
+      ].filter(Boolean).join(' · ');
+      li.innerHTML = `
+        <div class="dot ${inside?'on':'off'}"></div>
+        <div class="info">
+          <div class="name">${esc(name)}<span class="vtype ${isC?'c':'v'}">${isC?'ผู้รับเหมา':'ผู้มาติดต่อ'}</span>
+            ${r.remark ? `<span class="badge">${esc(r.remark)}</span>` : ''}</div>
+          <div class="meta">${contact || '—'}${v.note ? `<br>📝 ${esc(v.note)}` : ''}
+            <br>${inside ? 'เข้า ' + fmtDT(r.check_in) : 'เข้า ' + fmtT(r.check_in) + ' – ออก ' + fmtT(r.check_out)}</div>
+        </div>
+        <div class="dur">${durText(r.check_in, r.check_out)}</div>`;
+      return li;
+    }
+
+    function render() {
+      if ($('main').classList.contains('hidden')) return;
+      const inside = rows.filter(r => !r.check_out).sort((a,b)=>new Date(a.check_in)-new Date(b.check_in));
+      const out = rows.filter(r => r.check_out).sort((a,b)=>new Date(b.check_out)-new Date(a.check_out));
+      $('count').textContent = inside.length;
+      $('subCount').textContent = out.length ? `ออกไปแล้ววันนี้ ${out.length} คน` : '';
+      const li = $('listIn'), lo = $('listOut'); li.innerHTML=''; lo.innerHTML='';
+      $('lblIn').classList.toggle('hidden', inside.length===0);
+      $('lblOut').classList.toggle('hidden', out.length===0);
+      if (inside.length===0 && out.length===0) li.innerHTML = '<li class="empty">ยังไม่มีผู้มาติดต่อ/ผู้รับเหมาวันนี้</li>';
+      for (const r of inside) li.appendChild(personLi(r, true));
+      for (const r of out) lo.appendChild(personLi(r, false));
+      $('updated').textContent = 'อัปเดตล่าสุด ' + new Date().toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok' });
+    }
+
+    async function loadSettings() {
+      const data = await api({ action: 'get_settings' });
+      if (!data.ok) return;
+      const s = data.settings || {};
+      $('fLat').value = s.warehouse_lat ?? ''; $('fLng').value = s.warehouse_lng ?? '';
+      $('fRadius').value = s.radius_m ?? ''; $('fStart').value = s.work_start ?? '08:00'; $('fEnd').value = s.work_end ?? '17:00';
+    }
+    function useHere() {
+      if (!navigator.geolocation) { alert('อุปกรณ์นี้ไม่รองรับ Geolocation'); return; }
+      $('saveMsg').textContent = 'กำลังอ่านตำแหน่ง...';
+      navigator.geolocation.getCurrentPosition(
+        (pos) => { $('fLat').value = pos.coords.latitude.toFixed(6); $('fLng').value = pos.coords.longitude.toFixed(6); $('saveMsg').textContent = 'ใส่พิกัดปัจจุบันแล้ว อย่าลืมกดบันทึก'; },
+        (err) => { $('saveMsg').textContent = 'อ่านตำแหน่งไม่สำเร็จ: ' + err.message; },
+        { enableHighAccuracy: true, timeout: 15000 });
+    }
+    async function saveSettings() {
+      $('btnSave').disabled = true; $('saveMsg').textContent = 'กำลังบันทึก...';
+      const data = await api({ action: 'update_settings', settings: {
+        warehouse_lat: $('fLat').value, warehouse_lng: $('fLng').value, radius_m: $('fRadius').value,
+        work_start: $('fStart').value, work_end: $('fEnd').value } });
+      $('btnSave').disabled = false;
+      $('saveMsg').textContent = data.ok ? '✅ ' + data.desc : '❌ ' + (data.desc || 'บันทึกไม่สำเร็จ');
+    }
+
+    start();
+  </script>
+</body>
+</html>

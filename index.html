@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>บันทึกเวลา ผู้มาติดต่อ/ผู้รับเหมา — คลังแม่กลอง</title>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    body {
+      background: #A8E6CF; font-family: 'Prompt', sans-serif; color: #333;
+      min-height: 100vh; display: flex; flex-direction: column;
+      align-items: center; padding: 24px 16px 48px; text-align: center;
+    }
+    body.contractor { background: #FFE0B2; } /* ผู้รับเหมา = โทนส้ม แยกจากผู้มาติดต่อ */
+    .logo { max-width: 100px; border-radius: 16px; margin-bottom: 12px; }
+    .type-badge {
+      display: inline-block; font-size: 14px; font-weight: 600;
+      padding: 4px 16px; border-radius: 50px; margin-bottom: 8px;
+      background: #2E7D32; color: #fff;
+    }
+    body.contractor .type-badge { background: #E65100; }
+    h1 { font-size: 19px; font-weight: 600; color: #2E7D32; margin-bottom: 14px; }
+    body.contractor h1 { color: #E65100; }
+
+    .hint { font-size: 14px; color: #555; margin: 12px 0 6px; }
+    .card {
+      background: #fff; border-radius: 16px; box-shadow: 0 4px 10px rgba(0,0,0,.08);
+      padding: 20px; width: 100%; max-width: 380px; margin-bottom: 8px;
+    }
+    button {
+      border: none; border-radius: 50px; padding: 16px 0; width: 100%;
+      font-size: 20px; font-weight: 600; font-family: inherit; color: #fff; cursor: pointer;
+    }
+    button:disabled { opacity: .6; }
+    .btn-in  { background: #4CAF50; }
+    .btn-out { background: #FF7043; }
+
+    /* ฟอร์มลงทะเบียน */
+    .form { text-align: left; display: none; }
+    .form.show { display: block; }
+    .main-btns.hide { display: none; }
+    .field { margin-bottom: 14px; }
+    .field label { display: block; font-size: 13px; color: #546E7A; margin-bottom: 4px; }
+    .field .req { color: #E53935; }
+    .field input, .field textarea {
+      width: 100%; font-family: inherit; font-size: 16px;
+      padding: 10px 12px; border: 1px solid #C8E6C9; border-radius: 10px; background: #fff;
+    }
+    .field textarea { resize: vertical; min-height: 60px; }
+    .form-title { font-size: 17px; font-weight: 600; color: #2E7D32; margin-bottom: 4px; }
+    body.contractor .form-title { color: #E65100; }
+    .form-sub { font-size: 13px; color: #78909C; margin-bottom: 16px; }
+    .btn-submit { background: #4CAF50; margin-top: 4px; }
+    body.contractor .btn-submit { background: #E65100; }
+
+    .pdpa { font-size: 13px; color: #555; margin-top: 12px; }
+    .pdpa a { color: #2E7D32; }
+    #status { margin-top: 14px; font-size: 14px; color: #666; min-height: 20px; white-space: pre-line; max-width: 380px; }
+    .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.35); align-items: center; justify-content: center; }
+    .overlay.show { display: flex; }
+    .overlay .box { background: #fff; border-radius: 20px; padding: 28px 36px; font-size: 17px; color: #2E7D32; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <img class="logo" src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTytwug670ZT-11TYlXrUSICFqRsBv5_WCqmQ&s" alt="Logo">
+  <div class="type-badge" id="typeBadge">ผู้มาติดต่อ</div>
+  <h1>บันทึกเวลาเข้า-ออก คลังแม่กลอง</h1>
+
+  <!-- ปุ่มหลัก -->
+  <div class="main-btns" id="mainBtns" style="width:100%;max-width:380px">
+    <p class="hint">กดปุ่มด้านล่างเพื่อบันทึกเวลาเข้า</p>
+    <div class="card"><button class="btn-in" id="btnIn" onclick="handle('in')">Check-In</button></div>
+    <p class="hint">กดปุ่มเพื่อบันทึกเวลาออก</p>
+    <div class="card"><button class="btn-out" id="btnOut" onclick="handle('out')">Check-Out</button></div>
+    <div class="pdpa">
+      <label><input type="checkbox" id="pdpaConsent" checked> ฉันขออนุญาตให้เก็บข้อมูลตามข้อกำหนด PDPA</label><br>
+      <a href="https://patriackwong.github.io/PTGMKDEPOTPDPA/" target="_blank">รายละเอียดนโยบายความเป็นส่วนตัว</a>
+    </div>
+  </div>
+
+  <!-- ฟอร์มลงทะเบียนครั้งแรก -->
+  <div class="card form" id="regForm">
+    <div class="form-title">ลงทะเบียนครั้งแรก</div>
+    <div class="form-sub" id="regSub">กรุณากรอกข้อมูลก่อนบันทึกเวลาครั้งแรก</div>
+    <div class="field">
+      <label>ชื่อ-นามสกุล <span class="req">*</span></label>
+      <input type="text" id="rName" autocomplete="name">
+    </div>
+    <div class="field">
+      <label>เบอร์โทรศัพท์ <span class="req">*</span></label>
+      <input type="tel" id="rPhone" inputmode="tel" autocomplete="tel">
+    </div>
+    <div class="field">
+      <label>ชื่อบริษัท</label>
+      <input type="text" id="rCompany" autocomplete="organization">
+    </div>
+    <div class="field">
+      <label>อื่นๆ (เช่น วัตถุประสงค์ / ทะเบียนรถ)</label>
+      <textarea id="rNote"></textarea>
+    </div>
+    <button class="btn-submit" id="btnSubmit" onclick="submitReg()">ลงทะเบียนและเช็คอิน</button>
+  </div>
+
+  <p id="status"></p>
+  <div class="overlay" id="loading"><div class="box">กำลังบันทึกข้อมูล โปรดรอสักครู่...</div></div>
+
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js" charset="utf-8"></script>
+  <script>
+    // ===================== ตั้งค่า =====================
+    const LIFF_ID  = 'XXXXXXXXXX-XXXXXXXX'; // 🔧 LIFF สำหรับหน้าผู้มาติดต่อ/ผู้รับเหมา (สร้างใน channel เดิม)
+    const FUNC_URL = 'https://YOUR-VISITOR-PROJECT-REF.supabase.co/functions/v1/visitor_att'; // 🔧 โปรเจกต์ visitor ใหม่ ลงท้าย /visitor_att
+    // ===================================================
+
+    // ประเภทมาจาก URL: ?type=contractor สำหรับผู้รับเหมา, ค่าอื่น/ไม่มี = ผู้มาติดต่อ
+    const params = new URLSearchParams(location.search);
+    const VISITOR_TYPE = params.get('type') === 'contractor' ? 'contractor' : 'visitor';
+    const TYPE_TH = VISITOR_TYPE === 'contractor' ? 'ผู้รับเหมา' : 'ผู้มาติดต่อ';
+
+    const $ = (id) => document.getElementById(id);
+    const statusEl = $('status');
+    const loading = $('loading');
+    let pendingAfterReg = null; // เก็บพิกัดไว้ตอนต้องเปิดฟอร์มก่อน
+
+    // ตั้งธีมตามประเภท
+    if (VISITOR_TYPE === 'contractor') document.body.classList.add('contractor');
+    $('typeBadge').textContent = TYPE_TH;
+    $('regSub').textContent = `ลงทะเบียน${TYPE_TH} — กรอกครั้งเดียว ครั้งต่อไปกดเช็คได้เลย`;
+
+    liff.init({ liffId: LIFF_ID })
+      .then(() => { if (!liff.isLoggedIn() && !liff.isInClient()) liff.login(); })
+      .catch((err) => { statusEl.textContent = 'LIFF init ล้มเหลว: ' + err.message; });
+
+    function setBusy(b) {
+      loading.classList.toggle('show', b);
+      ['btnIn','btnOut','btnSubmit'].forEach(id => { if ($(id)) $(id).disabled = b; });
+    }
+
+    function showForm(show) {
+      $('regForm').classList.toggle('show', show);
+      $('mainBtns').classList.toggle('hide', show);
+    }
+
+    async function callApi(payload) {
+      const res = await fetch(FUNC_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accessToken: liff.getAccessToken(), visitorType: VISITOR_TYPE, ...payload })
+      });
+      const raw = await res.text();
+      try { return JSON.parse(raw); }
+      catch { throw new Error('เซิร์ฟเวอร์ตอบผิดรูปแบบ (HTTP ' + res.status + '): ' + raw.slice(0, 120)); }
+    }
+
+    function handle(op) {
+      if (!$('pdpaConsent').checked) { alert('กรุณายอมรับเงื่อนไข PDPA ก่อน'); return; }
+      if (!navigator.geolocation) { statusEl.textContent = 'อุปกรณ์นี้ไม่รองรับ Geolocation'; return; }
+      setBusy(true);
+      navigator.geolocation.getCurrentPosition(
+        (pos) => doAction(op, pos.coords.latitude, pos.coords.longitude),
+        (err) => { setBusy(false); statusEl.textContent = 'อ่านพิกัดไม่สำเร็จ: ' + err.message + '\nกรุณาเปิดอนุญาต Location แล้วลองใหม่'; },
+        { enableHighAccuracy: true, timeout: 15000 }
+      );
+    }
+
+    async function doAction(op, lat, lng) {
+      try {
+        const data = await callApi({ op, lat, lng, os: liff.getOS() });
+        // ยังไม่ลงทะเบียน → เปิดฟอร์ม (จำพิกัดไว้ใช้ตอน submit)
+        if (!data.ok && data.code === 'need_register') {
+          setBusy(false);
+          pendingAfterReg = { lat, lng };
+          showForm(true);
+          statusEl.textContent = '';
+          return;
+        }
+        setBusy(false);
+        alert(data.desc);
+        if (data.ok && liff.isInClient()) liff.closeWindow();
+      } catch (err) {
+        setBusy(false);
+        statusEl.textContent = 'เกิดข้อผิดพลาด: ' + err.message;
+      }
+    }
+
+    function submitReg() {
+      const fullName = $('rName').value.trim();
+      const phone = $('rPhone').value.trim();
+      if (!fullName || !phone) { alert('กรุณากรอกชื่อ-นามสกุล และเบอร์โทรให้ครบ'); return; }
+
+      const send = (lat, lng) => (async () => {
+        setBusy(true);
+        try {
+          const data = await callApi({
+            op: 'register', lat, lng, os: liff.getOS(),
+            fullName, phone,
+            company: $('rCompany').value.trim(),
+            note: $('rNote').value.trim(),
+          });
+          setBusy(false);
+          alert(data.desc);
+          if (data.ok) { showForm(false); if (liff.isInClient()) liff.closeWindow(); }
+        } catch (err) {
+          setBusy(false);
+          statusEl.textContent = 'เกิดข้อผิดพลาด: ' + err.message;
+        }
+      })();
+
+      // ใช้พิกัดที่จำไว้ ถ้าไม่มีก็ขอใหม่
+      if (pendingAfterReg) { send(pendingAfterReg.lat, pendingAfterReg.lng); return; }
+      setBusy(true);
+      navigator.geolocation.getCurrentPosition(
+        (pos) => send(pos.coords.latitude, pos.coords.longitude),
+        (err) => { setBusy(false); statusEl.textContent = 'อ่านพิกัดไม่สำเร็จ: ' + err.message; },
+        { enableHighAccuracy: true, timeout: 15000 }
+      );
+    }
+  </script>
+</body>
+</html>
