@@ -60,11 +60,36 @@
     .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.35); align-items: center; justify-content: center; }
     .overlay.show { display: flex; }
     .overlay .box { background: #fff; border-radius: 20px; padding: 28px 36px; font-size: 17px; color: #2E7D32; font-weight: 600; }
+    /* popup เลือกประเภท */
+    .choose { display: none; position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,.45); align-items: center; justify-content: center; padding: 24px; }
+    .choose.show { display: flex; }
+    .choose-box { background: #fff; border-radius: 22px; padding: 28px 24px; width: 100%; max-width: 360px; text-align: center; }
+    .choose-box h2 { font-size: 20px; font-weight: 600; color: #263238; margin-bottom: 6px; }
+    .choose-box p { font-size: 14px; color: #78909C; margin-bottom: 22px; }
+    .choose-btn { display: block; width: 100%; border: none; border-radius: 16px; padding: 22px 0; margin-bottom: 14px; font-family: inherit; font-size: 20px; font-weight: 600; color: #fff; cursor: pointer; }
+    .choose-btn .sub { display: block; font-size: 13px; font-weight: 400; opacity: .9; margin-top: 2px; }
+    .choose-visitor { background: #4CAF50; }
+    .choose-contractor { background: #E65100; }
   </style>
 </head>
 <body>
+  <!-- popup เลือกประเภท (เด้งทุกครั้งที่เข้ามา) -->
+  <div class="choose" id="choosePopup">
+    <div class="choose-box">
+      <h2>คุณเข้ามาในฐานะใด?</h2>
+      <p>เลือกประเภทการเข้าคลังครั้งนี้</p>
+      <button class="choose-btn choose-visitor" onclick="chooseType('visitor')">
+        ผู้มาติดต่อ<span class="sub">ติดต่อธุระ ประชุม ส่งเอกสาร</span>
+      </button>
+      <button class="choose-btn choose-contractor" onclick="chooseType('contractor')">
+        ผู้รับเหมา<span class="sub">เข้าปฏิบัติงาน ซ่อมบำรุง ก่อสร้าง</span>
+      </button>
+    </div>
+  </div>
+
   <img class="logo" src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTytwug670ZT-11TYlXrUSICFqRsBv5_WCqmQ&s" alt="Logo">
   <div class="type-badge" id="typeBadge">ผู้มาติดต่อ</div>
+  <div style="font-size:13px;margin-bottom:10px"><a href="#" onclick="reopenChoose(event)" style="color:#607D8B">เปลี่ยนประเภท</a></div>
   <h1>บันทึกเวลาเข้า-ออก คลังแม่กลอง</h1>
 
   <!-- ปุ่มหลัก -->
@@ -112,23 +137,43 @@
     const FUNC_URL = 'https://bjzsgfoskbvdxtmldezo.supabase.co/functions/v1/visitor_att'; // 🔧 โปรเจกต์ visitor ใหม่ ลงท้าย /visitor_att
     // ===================================================
 
-    // ประเภทมาจาก URL: ?type=contractor สำหรับผู้รับเหมา, ค่าอื่น/ไม่มี = ผู้มาติดต่อ
+    // ประเภทเลือกจาก popup ทุกครั้งที่เข้ามา (คนเดียวมาได้หลายบทบาท)
+    // ค่าเริ่มต้นจาก URL ?type= ใช้เป็นค่า default ของ popup เท่านั้น (ไม่บังคับ)
     const params = new URLSearchParams(location.search);
-    const VISITOR_TYPE = params.get('type') === 'contractor' ? 'contractor' : 'visitor';
-    const TYPE_TH = VISITOR_TYPE === 'contractor' ? 'ผู้รับเหมา' : 'ผู้มาติดต่อ';
+    let VISITOR_TYPE = null; // ยังไม่เลือก
+    const typeTH = (t) => t === 'contractor' ? 'ผู้รับเหมา' : 'ผู้มาติดต่อ';
 
     const $ = (id) => document.getElementById(id);
     const statusEl = $('status');
     const loading = $('loading');
     let pendingAfterReg = null; // เก็บพิกัดไว้ตอนต้องเปิดฟอร์มก่อน
 
-    // ตั้งธีมตามประเภท
-    if (VISITOR_TYPE === 'contractor') document.body.classList.add('contractor');
-    $('typeBadge').textContent = TYPE_TH;
-    $('regSub').textContent = `ลงทะเบียน${TYPE_TH} — กรอกครั้งเดียว ครั้งต่อไปกดเช็คได้เลย`;
+    function applyType(t) {
+      VISITOR_TYPE = t;
+      document.body.classList.toggle('contractor', t === 'contractor');
+      $('typeBadge').textContent = typeTH(t);
+      $('regSub').textContent = `ลงทะเบียน${typeTH(t)} — บันทึกครั้งเดียว ข้อมูลติดต่อจะถูกจดจำ`;
+    }
+
+    // เลือกประเภทจาก popup
+    function chooseType(t) {
+      applyType(t);
+      $('choosePopup').classList.remove('show');
+    }
+    // เปิด popup ใหม่ (ลิงก์ "เปลี่ยนประเภท")
+    function reopenChoose(e) {
+      if (e) e.preventDefault();
+      showForm(false);           // ถ้าเผลอเปิดฟอร์มค้างอยู่ ปิดก่อน
+      statusEl.textContent = '';
+      $('choosePopup').classList.add('show');
+    }
 
     liff.init({ liffId: LIFF_ID })
-      .then(() => { if (!liff.isLoggedIn() && !liff.isInClient()) liff.login(); })
+      .then(() => {
+        if (!liff.isLoggedIn() && !liff.isInClient()) { liff.login(); return; }
+        // เด้ง popup เลือกประเภททุกครั้งที่เข้ามา
+        $('choosePopup').classList.add('show');
+      })
       .catch((err) => { statusEl.textContent = 'LIFF init ล้มเหลว: ' + err.message; });
 
     function setBusy(b) {
@@ -153,6 +198,7 @@
     }
 
     function handle(op) {
+      if (!VISITOR_TYPE) { reopenChoose(); return; }
       if (!$('pdpaConsent').checked) { alert('กรุณายอมรับเงื่อนไข PDPA ก่อน'); return; }
       if (!navigator.geolocation) { statusEl.textContent = 'อุปกรณ์นี้ไม่รองรับ Geolocation'; return; }
       setBusy(true);
